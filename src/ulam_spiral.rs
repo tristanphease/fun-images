@@ -1,0 +1,205 @@
+//! Module for generating a ulam spiral
+//! 
+//! 
+//! 
+
+use image::{DynamicImage, ImageBuffer, Rgba};
+
+#[derive(Clone, Debug)]
+pub struct UlamSpiralOptions {
+    size: u32,
+}
+
+impl UlamSpiralOptions {
+    pub fn new(size: u32) -> Self {
+        Self { size }
+    }
+}
+
+pub fn generate_ulam_spiral_image(options: UlamSpiralOptions) -> DynamicImage {
+    let mut image_size = options.size.isqrt();
+    // since the square root rounds down, we want to round up instead if it's not exact 
+    if options.size % image_size != 0 {
+        image_size += 1;
+    }
+    // if even, make it odd to centre the image
+    if image_size % 2 == 0 {
+        image_size += 1;
+    }
+
+    let mut image = ImageBuffer::<Rgba<u8>, _>::new(image_size, image_size);
+
+    let spiral_pattern = SpiralPatternIterator::new(options.size, image_size);
+
+    for (value, (x, y)) in spiral_pattern.enumerate() {
+        let colour = if primal::is_prime(value as u64) {
+            Rgba([0, 0, 0, 255])
+        } else {
+            Rgba([255, 255, 255, 255])
+        };
+        image[(x, y)] = colour;
+    }
+
+    DynamicImage::ImageRgba8(image)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Direction {
+    Up,
+    Left,
+    Right,
+    Down,
+}
+
+impl Direction {
+    fn get_next(self, direction: SpiralDirection) -> Self {
+        match (self, direction) {
+            (Direction::Up, SpiralDirection::Clockwise) => Direction::Right,
+            (Direction::Up, SpiralDirection::AntiClockwise) => Direction::Left,
+            (Direction::Left, SpiralDirection::Clockwise) => Direction::Up,
+            (Direction::Left, SpiralDirection::AntiClockwise) => Direction::Down,
+            (Direction::Right, SpiralDirection::Clockwise) => Direction::Down,
+            (Direction::Right, SpiralDirection::AntiClockwise) => Direction::Up,
+            (Direction::Down, SpiralDirection::Clockwise) => Direction::Left,
+            (Direction::Down, SpiralDirection::AntiClockwise) => Direction::Right,
+        }
+    }
+
+    fn same_axis(self, direction: Self) -> bool {
+        !Self::different_axis(self, direction)
+    }
+
+    fn different_axis(self, direction: Self) -> bool {
+        match (self, direction) {
+            (Direction::Up, Direction::Up) => false,
+            (Direction::Up, Direction::Left) => true,
+            (Direction::Up, Direction::Right) => true,
+            (Direction::Up, Direction::Down) => false,
+            (Direction::Left, Direction::Up) => true,
+            (Direction::Left, Direction::Left) => false,
+            (Direction::Left, Direction::Right) => false,
+            (Direction::Left, Direction::Down) => true,
+            (Direction::Right, Direction::Up) => true,
+            (Direction::Right, Direction::Left) => false,
+            (Direction::Right, Direction::Right) => false,
+            (Direction::Right, Direction::Down) => true,
+            (Direction::Down, Direction::Up) => false,
+            (Direction::Down, Direction::Left) => true,
+            (Direction::Down, Direction::Right) => true,
+            (Direction::Down, Direction::Down) => false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum SpiralDirection {
+    #[allow(dead_code)]
+    Clockwise,
+    AntiClockwise
+}
+
+#[derive(Clone, Copy, Debug)]
+struct SpiralPatternIterator {
+    /// The direction the spiral is currently running
+    direction: Direction,
+    /// The spiral direction (clockwise or anti-clockwise)
+    spiral_direction: SpiralDirection,
+    /// The amount through the current direction
+    amount_through_direction: u32,
+    /// The length of the current spiral
+    spiral_num: u32,
+    /// The current x pos
+    x: u32,
+    /// The current y pos
+    y: u32,
+    /// The total number to go through in the spiral
+    total_size: u32,
+    /// The direction we start at, necessary to know
+    start_direction: Direction,
+    /// Amount through the total size
+    amount_through: u32,
+}
+
+impl SpiralPatternIterator {
+    fn new(total_size: u32, image_width: u32) -> Self {
+        let start_direction = Direction::Right;
+        Self {
+            direction: start_direction,
+            spiral_direction: SpiralDirection::AntiClockwise,
+            amount_through_direction: 0,
+            spiral_num: 1,
+            x: image_width / 2,
+            y: image_width / 2,
+            total_size,
+            start_direction: start_direction,
+            amount_through: 0,
+        }
+    }
+}
+
+impl Iterator for SpiralPatternIterator {
+    type Item = (u32, u32);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.amount_through >= self.total_size {
+            return None;
+        }
+
+        let result = (self.x, self.y);
+
+        self.amount_through += 1;
+
+        match self.direction {
+            Direction::Up => self.y -= 1,
+            Direction::Left => self.x -= 1,
+            Direction::Right => self.x += 1,
+            Direction::Down => self.y += 1,
+        }
+
+        self.amount_through_direction += 1;
+        if self.amount_through_direction >= self.spiral_num {
+            let new_direction = self.direction.get_next(self.spiral_direction);
+            if Direction::same_axis(self.start_direction, new_direction) {
+                self.spiral_num += 1;
+            }
+            self.amount_through_direction = 0;
+            self.direction = new_direction;
+        }
+
+        Some(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_spiral_pattern() {
+        let total = 21;
+        let centre = total / 2;
+        let mut spiral_pattern = SpiralPatternIterator::new(total, total);
+        assert_eq!(Some((centre, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre+1, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre+1, centre-1)), spiral_pattern.next());
+        assert_eq!(Some((centre, centre-1)), spiral_pattern.next());
+        assert_eq!(Some((centre-1, centre-1)), spiral_pattern.next());
+        assert_eq!(Some((centre-1, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre-1, centre+1)), spiral_pattern.next());
+        assert_eq!(Some((centre, centre+1)), spiral_pattern.next());
+        assert_eq!(Some((centre+1, centre+1)), spiral_pattern.next());
+        assert_eq!(Some((centre+2, centre+1)), spiral_pattern.next());
+        assert_eq!(Some((centre+2, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre+2, centre-1)), spiral_pattern.next());
+        assert_eq!(Some((centre+2, centre-2)), spiral_pattern.next());
+        assert_eq!(Some((centre+1, centre-2)), spiral_pattern.next());
+        assert_eq!(Some((centre, centre-2)), spiral_pattern.next());
+        assert_eq!(Some((centre-1, centre-2)), spiral_pattern.next());
+        assert_eq!(Some((centre-2, centre-2)), spiral_pattern.next());
+        assert_eq!(Some((centre-2, centre-1)), spiral_pattern.next());
+        assert_eq!(Some((centre-2, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre-2, centre+1)), spiral_pattern.next());
+        assert_eq!(Some((centre-2, centre+2)), spiral_pattern.next());
+        assert_eq!(None, spiral_pattern.next());
+    }
+}
