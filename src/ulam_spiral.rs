@@ -1,46 +1,102 @@
 //! Module for generating a ulam spiral
 //! 
-//! 
+//! Can generate either the typical prime spiral or a spiral which shows the number of divisors
 //! 
 
+use csscolorparser::Color;
 use image::{DynamicImage, ImageBuffer, Rgba};
+use imageproc::drawing::draw_filled_circle_mut;
+
+use crate::UlamSpiralMode;
 
 #[derive(Clone, Debug)]
 pub struct UlamSpiralOptions {
     size: u32,
+    color: Color,
+    mode: UlamSpiralMode,
+    background_color: Color,
 }
 
 impl UlamSpiralOptions {
-    pub fn new(size: u32) -> Self {
-        Self { size }
+    pub fn new(size: u32, color: Color, mode: UlamSpiralMode, background_color: Color) -> Self {
+        Self { size, color, mode, background_color }
+    }
+
+    fn get_image_size(&self) -> u32 {
+        let mut image_size = self.size.isqrt();
+        // since the square root rounds down, we want to round up instead if it's not exact 
+        if image_size * image_size != self.size {
+            image_size += 1;
+        }
+        // if even, make it odd to centre the image
+        if image_size % 2 == 0 {
+            image_size += 1;
+        }
+        image_size
     }
 }
 
 pub fn generate_ulam_spiral_image(options: UlamSpiralOptions) -> DynamicImage {
-    let mut image_size = options.size.isqrt();
-    // since the square root rounds down, we want to round up instead if it's not exact 
-    if image_size * image_size != options.size {
-        image_size += 1;
+    match options.mode {
+        UlamSpiralMode::PrimeOnly => generate_prime_ulam_spiral(options),
+        UlamSpiralMode::Divisor => generate_divisor_ulam_spiral(options),
     }
-    // if even, make it odd to centre the image
-    if image_size % 2 == 0 {
-        image_size += 1;
-    }
+}
 
+fn generate_prime_ulam_spiral(options: UlamSpiralOptions) -> DynamicImage {
+    let image_size = options.get_image_size();
     let mut image = ImageBuffer::<Rgba<u8>, _>::new(image_size, image_size);
 
     let spiral_pattern = SpiralPatternIterator::new(options.size, image_size);
 
+    let converted_color = options.color.to_rgba8();
+    let converted_background_color = options.background_color.to_rgba8();
+
     for (value, (x, y)) in spiral_pattern.enumerate() {
         let colour = if primal::is_prime(value as u64) {
-            Rgba([0, 0, 0, 255])
+            Rgba(converted_color)
         } else {
-            Rgba([255, 255, 255, 255])
+            Rgba(converted_background_color)
         };
         image[(x, y)] = colour;
     }
 
     DynamicImage::ImageRgba8(image)
+}
+
+fn generate_divisor_ulam_spiral(options: UlamSpiralOptions) -> DynamicImage {
+    const DEFAULT_CIRCLE_SIZE: u32 = 10;
+    
+    let image_size = options.get_image_size();
+    let image_dimension = image_size * DEFAULT_CIRCLE_SIZE;
+    let mut image = ImageBuffer::<Rgba<u8>, _>::new(image_dimension, image_dimension);
+
+    // set background
+    let converted_background_color = options.background_color.to_rgba8();
+    image.pixels_mut().for_each(|x| *x = Rgba(converted_background_color));
+
+    let converted_color = options.color.to_rgba8();
+
+    let spiral_pattern = SpiralPatternIterator::new(options.size, image_size);
+
+    for (value, (x, y)) in spiral_pattern.enumerate() {
+        let square_root = (value as u32).isqrt();
+        if square_root == 0 { continue; }
+        let num_factors = get_factor_num(value as u32, square_root);
+        // could we do something where we scale the circle size by the square root so
+        // we don't bias in favour of images outside the centre?
+        let circle_size = num_factors / 3;
+        let x = (x * DEFAULT_CIRCLE_SIZE) as i32;
+        let y = (y * DEFAULT_CIRCLE_SIZE) as i32;
+        draw_filled_circle_mut(&mut image, (x, y), circle_size as i32, Rgba(converted_color));
+    }
+
+    DynamicImage::ImageRgba8(image)
+}
+
+/// gets half the factors, searches up to the num which should be the square root
+fn get_factor_num(num: u32, search_num: u32) -> u32 {
+    1 + (2..=search_num).filter(|&x| num % x == 0).count() as u32
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -1,6 +1,7 @@
 use std::time::Instant;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use csscolorparser::Color;
 
 use crate::ulam_spiral::{generate_ulam_spiral_image, UlamSpiralOptions};
 
@@ -12,8 +13,13 @@ fn main() {
     let start = Instant::now();
     let image = match args.image_type {
         ImageType::UlamSpiral {
-            size
-        } => generate_ulam_spiral_image(UlamSpiralOptions::new(size)) 
+            size,
+            color,
+            mode,
+            background_color
+        } => {
+            generate_ulam_spiral_image(UlamSpiralOptions::new(size, color, mode, background_color))
+        } 
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -45,6 +51,23 @@ enum ImageType {
     UlamSpiral {
         /// The size of the spiral to go up to, defaults to 201 squared
         #[arg(short, long, default_value = "40401")]
-        size: u32
+        size: u32,
+
+        #[arg(short, long, default_value = "black")]
+        color: Color,
+
+        #[arg(short, long, default_value = "prime-only")]
+        mode: UlamSpiralMode,
+
+        #[arg(short, long, default_value = "white")]
+        background_color: Color,
     }
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub(crate) enum UlamSpiralMode {
+    /// Generates pixels for the primes only
+    PrimeOnly,
+    /// Generates circles based on how many divisors a number has
+    Divisor
 }
