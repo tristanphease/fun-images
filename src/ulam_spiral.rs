@@ -19,7 +19,7 @@ impl UlamSpiralOptions {
 pub fn generate_ulam_spiral_image(options: UlamSpiralOptions) -> DynamicImage {
     let mut image_size = options.size.isqrt();
     // since the square root rounds down, we want to round up instead if it's not exact 
-    if options.size % image_size != 0 {
+    if image_size * image_size != options.size {
         image_size += 1;
     }
     // if even, make it odd to centre the image
