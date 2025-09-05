@@ -1,7 +1,7 @@
 //! Module for generating a ulam spiral
-//! 
+//!
 //! Can generate either the typical prime spiral or a spiral which shows the number of divisors
-//! 
+//!
 
 use csscolorparser::Color;
 use image::{DynamicImage, ImageBuffer, Rgba};
@@ -19,17 +19,22 @@ pub struct UlamSpiralOptions {
 
 impl UlamSpiralOptions {
     pub fn new(size: u32, color: Color, mode: UlamSpiralMode, background_color: Color) -> Self {
-        Self { size, color, mode, background_color }
+        Self {
+            size,
+            color,
+            mode,
+            background_color,
+        }
     }
 
     fn get_image_size(&self) -> u32 {
         let mut image_size = self.size.isqrt();
-        // since the square root rounds down, we want to round up instead if it's not exact 
+        // since the square root rounds down, we want to round up instead if it's not exact
         if image_size * image_size != self.size {
             image_size += 1;
         }
         // if even, make it odd to centre the image
-        if image_size % 2 == 0 {
+        if image_size.is_multiple_of(2) {
             image_size += 1;
         }
         image_size
@@ -66,14 +71,16 @@ fn generate_prime_ulam_spiral(options: UlamSpiralOptions) -> DynamicImage {
 
 fn generate_divisor_ulam_spiral(options: UlamSpiralOptions) -> DynamicImage {
     const DEFAULT_CIRCLE_SIZE: u32 = 10;
-    
+
     let image_size = options.get_image_size();
     let image_dimension = image_size * DEFAULT_CIRCLE_SIZE;
     let mut image = ImageBuffer::<Rgba<u8>, _>::new(image_dimension, image_dimension);
 
     // set background
     let converted_background_color = options.background_color.to_rgba8();
-    image.pixels_mut().for_each(|x| *x = Rgba(converted_background_color));
+    image
+        .pixels_mut()
+        .for_each(|x| *x = Rgba(converted_background_color));
 
     let converted_color = options.color.to_rgba8();
 
@@ -81,14 +88,21 @@ fn generate_divisor_ulam_spiral(options: UlamSpiralOptions) -> DynamicImage {
 
     for (value, (x, y)) in spiral_pattern.enumerate() {
         let square_root = (value as u32).isqrt();
-        if square_root == 0 { continue; }
+        if square_root == 0 {
+            continue;
+        }
         let num_factors = get_factor_num(value as u32, square_root);
         // could we do something where we scale the circle size by the square root so
         // we don't bias in favour of images outside the centre?
         let circle_size = num_factors / 3;
         let x = (x * DEFAULT_CIRCLE_SIZE) as i32;
         let y = (y * DEFAULT_CIRCLE_SIZE) as i32;
-        draw_filled_circle_mut(&mut image, (x, y), circle_size as i32, Rgba(converted_color));
+        draw_filled_circle_mut(
+            &mut image,
+            (x, y),
+            circle_size as i32,
+            Rgba(converted_color),
+        );
     }
 
     DynamicImage::ImageRgba8(image)
@@ -96,7 +110,7 @@ fn generate_divisor_ulam_spiral(options: UlamSpiralOptions) -> DynamicImage {
 
 /// gets half the factors, searches up to the num which should be the square root
 fn get_factor_num(num: u32, search_num: u32) -> u32 {
-    1 + (2..=search_num).filter(|&x| num % x == 0).count() as u32
+    1 + (2..=search_num).filter(|&x| num.is_multiple_of(x)).count() as u32
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -151,7 +165,7 @@ impl Direction {
 enum SpiralDirection {
     #[allow(dead_code)]
     Clockwise,
-    AntiClockwise
+    AntiClockwise,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -187,7 +201,7 @@ impl SpiralPatternIterator {
             x: image_width / 2,
             y: image_width / 2,
             total_size,
-            start_direction: start_direction,
+            start_direction,
             amount_through: 0,
         }
     }
@@ -236,26 +250,26 @@ mod tests {
         let centre = total / 2;
         let mut spiral_pattern = SpiralPatternIterator::new(total, total);
         assert_eq!(Some((centre, centre)), spiral_pattern.next());
-        assert_eq!(Some((centre+1, centre)), spiral_pattern.next());
-        assert_eq!(Some((centre+1, centre-1)), spiral_pattern.next());
-        assert_eq!(Some((centre, centre-1)), spiral_pattern.next());
-        assert_eq!(Some((centre-1, centre-1)), spiral_pattern.next());
-        assert_eq!(Some((centre-1, centre)), spiral_pattern.next());
-        assert_eq!(Some((centre-1, centre+1)), spiral_pattern.next());
-        assert_eq!(Some((centre, centre+1)), spiral_pattern.next());
-        assert_eq!(Some((centre+1, centre+1)), spiral_pattern.next());
-        assert_eq!(Some((centre+2, centre+1)), spiral_pattern.next());
-        assert_eq!(Some((centre+2, centre)), spiral_pattern.next());
-        assert_eq!(Some((centre+2, centre-1)), spiral_pattern.next());
-        assert_eq!(Some((centre+2, centre-2)), spiral_pattern.next());
-        assert_eq!(Some((centre+1, centre-2)), spiral_pattern.next());
-        assert_eq!(Some((centre, centre-2)), spiral_pattern.next());
-        assert_eq!(Some((centre-1, centre-2)), spiral_pattern.next());
-        assert_eq!(Some((centre-2, centre-2)), spiral_pattern.next());
-        assert_eq!(Some((centre-2, centre-1)), spiral_pattern.next());
-        assert_eq!(Some((centre-2, centre)), spiral_pattern.next());
-        assert_eq!(Some((centre-2, centre+1)), spiral_pattern.next());
-        assert_eq!(Some((centre-2, centre+2)), spiral_pattern.next());
+        assert_eq!(Some((centre + 1, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre + 1, centre - 1)), spiral_pattern.next());
+        assert_eq!(Some((centre, centre - 1)), spiral_pattern.next());
+        assert_eq!(Some((centre - 1, centre - 1)), spiral_pattern.next());
+        assert_eq!(Some((centre - 1, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre - 1, centre + 1)), spiral_pattern.next());
+        assert_eq!(Some((centre, centre + 1)), spiral_pattern.next());
+        assert_eq!(Some((centre + 1, centre + 1)), spiral_pattern.next());
+        assert_eq!(Some((centre + 2, centre + 1)), spiral_pattern.next());
+        assert_eq!(Some((centre + 2, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre + 2, centre - 1)), spiral_pattern.next());
+        assert_eq!(Some((centre + 2, centre - 2)), spiral_pattern.next());
+        assert_eq!(Some((centre + 1, centre - 2)), spiral_pattern.next());
+        assert_eq!(Some((centre, centre - 2)), spiral_pattern.next());
+        assert_eq!(Some((centre - 1, centre - 2)), spiral_pattern.next());
+        assert_eq!(Some((centre - 2, centre - 2)), spiral_pattern.next());
+        assert_eq!(Some((centre - 2, centre - 1)), spiral_pattern.next());
+        assert_eq!(Some((centre - 2, centre)), spiral_pattern.next());
+        assert_eq!(Some((centre - 2, centre + 1)), spiral_pattern.next());
+        assert_eq!(Some((centre - 2, centre + 2)), spiral_pattern.next());
         assert_eq!(None, spiral_pattern.next());
     }
 }

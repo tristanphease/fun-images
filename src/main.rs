@@ -3,7 +3,10 @@ use std::time::Instant;
 use clap::{Parser, Subcommand, ValueEnum};
 use csscolorparser::Color;
 
-use crate::{mandelbrot::{generate_mandelbrot_image, MandelbrotImageOptions}, ulam_spiral::{generate_ulam_spiral_image, UlamSpiralOptions}};
+use crate::{
+    mandelbrot::{MandelbrotImageOptions, generate_mandelbrot_image},
+    ulam_spiral::{UlamSpiralOptions, generate_ulam_spiral_image},
+};
 
 mod mandelbrot;
 mod ulam_spiral;
@@ -17,15 +20,19 @@ fn main() {
             size,
             color,
             mode,
-            background_color
+            background_color,
         } => {
             generate_ulam_spiral_image(UlamSpiralOptions::new(size, color, mode, background_color))
-        },
-        ImageType::Mandelbrot { 
+        }
+        ImageType::Mandelbrot {
             color,
             background_color,
             gradient,
-        } => generate_mandelbrot_image(MandelbrotImageOptions::new(color, background_color, gradient))
+        } => generate_mandelbrot_image(MandelbrotImageOptions::new(
+            color,
+            background_color,
+            gradient,
+        )),
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -35,7 +42,6 @@ fn main() {
     } else {
         println!("Saved image to {}", &args.output);
     }
-    
 }
 
 /// Args for the program
@@ -74,10 +80,10 @@ enum ImageType {
 
         #[arg(short, long, default_value = "white")]
         background_color: Color,
-        
+
         #[arg(short, long, default_value = "false")]
         gradient: bool,
-    }
+    },
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -85,5 +91,5 @@ pub(crate) enum UlamSpiralMode {
     /// Generates pixels for the primes only
     PrimeOnly,
     /// Generates circles based on how many divisors a number has
-    Divisor
+    Divisor,
 }

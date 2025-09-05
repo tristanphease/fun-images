@@ -1,21 +1,25 @@
 //! Module for generating a mandelbrot image
-//! 
+//!
 //! The standard cool image so got to have it here:
 //! See <https://en.wikipedia.org/wiki/Mandelbrot_set> for more info
 
 use csscolorparser::Color;
 use image::{DynamicImage, ImageBuffer, Rgba};
-use num_complex::{Complex64};
+use num_complex::Complex64;
 
 pub struct MandelbrotImageOptions {
     color: Color,
     background_color: Color,
     use_gradient: bool,
-} 
+}
 
 impl MandelbrotImageOptions {
     pub fn new(color: Color, background_color: Color, use_gradient: bool) -> Self {
-        Self { color, background_color, use_gradient }
+        Self {
+            color,
+            background_color,
+            use_gradient,
+        }
     }
 }
 
@@ -33,15 +37,22 @@ pub fn generate_mandelbrot_image(options: MandelbrotImageOptions) -> DynamicImag
 
     for y in 0..IMAGE_HEIGHT {
         for x in 0..IMAGE_WIDTH {
-            let real = (x as f64) / (IMAGE_WIDTH as f64) * viewport.real_diameter - viewport.real_diameter / 2.0 + viewport.centre.re;
-            let imaginary = (y as f64) / (IMAGE_HEIGHT as f64) * viewport.imaginary_diameter - viewport.imaginary_diameter / 2.0 + viewport.centre.im;
+            let real = (x as f64) / (IMAGE_WIDTH as f64) * viewport.real_diameter
+                - viewport.real_diameter / 2.0
+                + viewport.centre.re;
+            let imaginary = (y as f64) / (IMAGE_HEIGHT as f64) * viewport.imaginary_diameter
+                - viewport.imaginary_diameter / 2.0
+                + viewport.centre.im;
 
             let complex = Complex64::new(real, imaginary);
 
             if let Some(iter_num) = check_mandelbrot(complex) {
                 if options.use_gradient {
-                    let grad_color = get_interp(converted_background_color, converted_color,
-                        iter_num as f64 / MAX_ITER_NUM as f64);
+                    let grad_color = get_interp(
+                        converted_background_color,
+                        converted_color,
+                        iter_num as f64 / MAX_ITER_NUM as f64,
+                    );
                     image[(x, y)] = Rgba(grad_color);
                 } else {
                     image[(x, y)] = Rgba(converted_color);
@@ -76,7 +87,7 @@ fn check_mandelbrot_recursion(z: Complex64, c: Complex64, iteration_num: u32) ->
 }
 
 fn get_interp(color1: [u8; 4], color2: [u8; 4], amount: f64) -> [u8; 4] {
-    let interp = |x: u8, y: u8| ((x as f64) * amount + (y as f64) * (1.0 - amount)) as u8; 
+    let interp = |x: u8, y: u8| ((x as f64) * amount + (y as f64) * (1.0 - amount)) as u8;
 
     [
         interp(color1[0], color2[0]),
