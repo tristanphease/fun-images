@@ -13,3 +13,7 @@ Generated with the following:
 `cargo run -- --output showcase/ulam-spiral-divisor.webp ulam-spiral --mode divisor --size 100000 --color #74b2e4 --background-color #343234`
 
 This one was constructed to match [this image](https://en.wikiquote.org/wiki/File:Ulam_Spiral_Divisors_100000.png)
+
+# mandelbrot.webp
+Generated with the following:
+`cargo run --release -- --output showcase/mandelbrot.webp mandelbrot --gradient`

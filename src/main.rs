@@ -3,8 +3,9 @@ use std::time::Instant;
 use clap::{Parser, Subcommand, ValueEnum};
 use csscolorparser::Color;
 
-use crate::ulam_spiral::{generate_ulam_spiral_image, UlamSpiralOptions};
+use crate::{mandelbrot::{generate_mandelbrot_image, MandelbrotImageOptions}, ulam_spiral::{generate_ulam_spiral_image, UlamSpiralOptions}};
 
+mod mandelbrot;
 mod ulam_spiral;
 
 fn main() {
@@ -19,7 +20,12 @@ fn main() {
             background_color
         } => {
             generate_ulam_spiral_image(UlamSpiralOptions::new(size, color, mode, background_color))
-        } 
+        },
+        ImageType::Mandelbrot { 
+            color,
+            background_color,
+            gradient,
+        } => generate_mandelbrot_image(MandelbrotImageOptions::new(color, background_color, gradient))
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -61,6 +67,16 @@ enum ImageType {
 
         #[arg(short, long, default_value = "white")]
         background_color: Color,
+    },
+    Mandelbrot {
+        #[arg(short, long, default_value = "black")]
+        color: Color,
+
+        #[arg(short, long, default_value = "white")]
+        background_color: Color,
+        
+        #[arg(short, long, default_value = "false")]
+        gradient: bool,
     }
 }
 

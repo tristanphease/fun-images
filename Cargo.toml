@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.5.46", features = ["derive"] }
 csscolorparser = "0.7.2"
-image = "0.25.7"
+image = "0.25.8"
 imageproc = "0.25.0"
+num-complex = "0.4.6"
 primal = "0.3.3"
