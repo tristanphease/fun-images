@@ -1,4 +1,4 @@
-## How images in the showcase were generated
+# How images in the showcase were generated
 
 All commands were run from the repo base
 
@@ -11,7 +11,7 @@ Generated with the following:
 
 A stock standard ulam spiral, not much special here.
 
-# ulam-spiral-divisor.webp
+## ulam-spiral-divisor.webp
 
 ![ulam spiral but with circles changing size depending on number of factors](./ulam-spiral-divisor.webp)
 
@@ -20,14 +20,14 @@ Generated with the following:
 
 This one was constructed to match [this image](https://en.wikiquote.org/wiki/File:Ulam_Spiral_Divisors_100000.png)
 
-# mandelbrot.webp
+## mandelbrot.webp
 
 ![mandelbrot image](./mandelbrot.webp)
 
 Generated with the following:
 `cargo run --release -- --output showcase/mandelbrot.webp mandelbrot --gradient`
 
-# tangent-wave.webp
+## tangent-wave.webp
 
 ![animated image showing a tangent being drawn](./tangent-wave.png)
 

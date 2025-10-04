@@ -4,12 +4,11 @@ use clap::{Parser, Subcommand, ValueEnum};
 use csscolorparser::Color;
 
 use crate::{
-    mandelbrot::{MandelbrotImageOptions, generate_mandelbrot_image},
-    ulam_spiral::{UlamSpiralOptions, generate_ulam_spiral_image},
-    waves::{WaveOptions, generate_wave_images},
+    mandelbrot::{generate_mandelbrot_image, MandelbrotImageOptions}, sierpinski::generate_sierpinski_image, ulam_spiral::{generate_ulam_spiral_image, UlamSpiralOptions}, waves::{generate_wave_images, WaveOptions}
 };
 
 mod mandelbrot;
+mod sierpinski;
 mod ulam_spiral;
 mod waves;
 
@@ -49,6 +48,7 @@ fn save_static_image(args: Args) {
             gradient,
         )),
         ImageType::Wave { .. } => unreachable!(),
+        ImageType::Sierpinski { color, size } => generate_sierpinski_image(color, size),
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -65,32 +65,33 @@ fn save_animated_image(args: Args) {
         ImageType::UlamSpiral { .. } => unreachable!(),
         ImageType::Mandelbrot { .. } => unreachable!(),
         ImageType::Wave { color, wave_type } => {
-            let width = 500;
-            let height = 500;
-            let wave_images =
-                generate_wave_images(WaveOptions::new(color, wave_type, width, height));
-            let file_name = if args.output.ends_with(".png") {
-                args.output
-            } else {
-                format!("{}.png", args.output)
-            };
-            let file = File::create(file_name).unwrap();
-            let writer = &mut BufWriter::new(file);
-
-            let mut png_encoder = png::Encoder::new(writer, width, height);
-            png_encoder.set_color(png::ColorType::Rgba);
-            png_encoder.set_depth(png::BitDepth::Eight);
-            png_encoder
-                .set_animated(wave_images.len() as u32, 0)
-                .expect("Couldn't set animated");
-            let mut writer = png_encoder.write_header().expect("Couldn't write header");
-            for wave_image in wave_images.iter() {
-                writer
-                    .write_image_data(&wave_image)
-                    .expect("Couldn't write image data");
+                        let width = 500;
+                        let height = 500;
+                        let wave_images =
+                            generate_wave_images(WaveOptions::new(color, wave_type, width, height));
+                        let file_name = if args.output.ends_with(".png") {
+                            args.output
+                        } else {
+                            format!("{}.png", args.output)
+                        };
+                        let file = File::create(file_name).unwrap();
+                        let writer = &mut BufWriter::new(file);
+        
+                        let mut png_encoder = png::Encoder::new(writer, width, height);
+                        png_encoder.set_color(png::ColorType::Rgba);
+                        png_encoder.set_depth(png::BitDepth::Eight);
+                        png_encoder
+                            .set_animated(wave_images.len() as u32, 0)
+                            .expect("Couldn't set animated");
+                        let mut writer = png_encoder.write_header().expect("Couldn't write header");
+                        for wave_image in wave_images.iter() {
+                            writer
+                                .write_image_data(&wave_image)
+                                .expect("Couldn't write image data");
+                        }
+                        writer.finish().expect("Couldn't finish writing");
             }
-            writer.finish().expect("Couldn't finish writing");
-        }
+        ImageType::Sierpinski { .. } => unreachable!(),
     }
 }
 
@@ -114,33 +115,40 @@ enum ImageType {
         /// The size of the spiral to go up to, defaults to 201 squared
         #[arg(short, long, default_value = "40401")]
         size: u32,
-
+        
         #[arg(short, long, default_value = "black")]
         color: Color,
-
+        
         #[arg(short, long, default_value = "prime-only")]
         mode: UlamSpiralMode,
-
+        
         #[arg(short, long, default_value = "white")]
         background_color: Color,
     },
     Mandelbrot {
         #[arg(short, long, default_value = "black")]
         color: Color,
-
+        
         #[arg(short, long, default_value = "white")]
         background_color: Color,
-
+        
         #[arg(short, long, default_value = "false")]
         gradient: bool,
     },
     Wave {
         #[arg(short, long, default_value = "black")]
         color: Color,
-
+        
         #[arg(short, long, default_value = "sine")]
         wave_type: WaveType,
     },
+    Sierpinski {
+        #[arg(short, long, default_value = "black")]
+        color: Color,
+
+        #[arg(short, long, default_value = "1000")]
+        size: u32,
+    }
 }
 
 impl ImageType {
@@ -149,6 +157,7 @@ impl ImageType {
             ImageType::UlamSpiral { .. } => ImageFormat::Static,
             ImageType::Mandelbrot { .. } => ImageFormat::Static,
             ImageType::Wave { .. } => ImageFormat::Animated,
+            ImageType::Sierpinski { .. } => ImageFormat::Static,
         }
     }
 }
