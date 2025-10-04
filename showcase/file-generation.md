@@ -26,3 +26,10 @@ This one was constructed to match [this image](https://en.wikiquote.org/wiki/Fil
 
 Generated with the following:
 `cargo run --release -- --output showcase/mandelbrot.webp mandelbrot --gradient`
+
+# tangent-wave.webp
+
+![animated image showing a tangent being drawn](./tangent-wave.png)
+
+Generated with the following:
+`cargo run --release -- --output showcase/tangent-wave.png wave --color orangered --wave-type tangent`

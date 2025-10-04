@@ -422,6 +422,7 @@ dependencies = [
  "image",
  "imageproc",
  "num-complex",
+ "png",
  "primal",
 ]
 

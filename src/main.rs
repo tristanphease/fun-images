@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{fs::File, io::BufWriter, time::Instant};
 
 use clap::{Parser, Subcommand, ValueEnum};
 use csscolorparser::Color;
@@ -6,15 +6,30 @@ use csscolorparser::Color;
 use crate::{
     mandelbrot::{MandelbrotImageOptions, generate_mandelbrot_image},
     ulam_spiral::{UlamSpiralOptions, generate_ulam_spiral_image},
+    waves::{WaveOptions, generate_wave_images},
 };
 
 mod mandelbrot;
 mod ulam_spiral;
+mod waves;
 
 fn main() {
     let args = Args::parse();
 
+    let format = args.image_type.get_format();
+    match format {
+        ImageFormat::Static => {
+            save_static_image(args);
+        }
+        ImageFormat::Animated => {
+            save_animated_image(args);
+        }
+    }
+}
+
+fn save_static_image(args: Args) {
     let start = Instant::now();
+
     let image = match args.image_type {
         ImageType::UlamSpiral {
             size,
@@ -33,6 +48,7 @@ fn main() {
             background_color,
             gradient,
         )),
+        ImageType::Wave { .. } => unreachable!(),
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -41,6 +57,40 @@ fn main() {
         eprintln!("Error saving image: {:?}", image_error);
     } else {
         println!("Saved image to {}", &args.output);
+    }
+}
+
+fn save_animated_image(args: Args) {
+    match args.image_type {
+        ImageType::UlamSpiral { .. } => unreachable!(),
+        ImageType::Mandelbrot { .. } => unreachable!(),
+        ImageType::Wave { color, wave_type } => {
+            let width = 500;
+            let height = 500;
+            let wave_images =
+                generate_wave_images(WaveOptions::new(color, wave_type, width, height));
+            let file_name = if args.output.ends_with(".png") {
+                args.output
+            } else {
+                format!("{}.png", args.output)
+            };
+            let file = File::create(file_name).unwrap();
+            let writer = &mut BufWriter::new(file);
+
+            let mut png_encoder = png::Encoder::new(writer, width, height);
+            png_encoder.set_color(png::ColorType::Rgba);
+            png_encoder.set_depth(png::BitDepth::Eight);
+            png_encoder
+                .set_animated(wave_images.len() as u32, 0)
+                .expect("Couldn't set animated");
+            let mut writer = png_encoder.write_header().expect("Couldn't write header");
+            for wave_image in wave_images.iter() {
+                writer
+                    .write_image_data(&wave_image)
+                    .expect("Couldn't write image data");
+            }
+            writer.finish().expect("Couldn't finish writing");
+        }
     }
 }
 
@@ -84,6 +134,28 @@ enum ImageType {
         #[arg(short, long, default_value = "false")]
         gradient: bool,
     },
+    Wave {
+        #[arg(short, long, default_value = "black")]
+        color: Color,
+
+        #[arg(short, long, default_value = "sine")]
+        wave_type: WaveType,
+    },
+}
+
+impl ImageType {
+    fn get_format(&self) -> ImageFormat {
+        match self {
+            ImageType::UlamSpiral { .. } => ImageFormat::Static,
+            ImageType::Mandelbrot { .. } => ImageFormat::Static,
+            ImageType::Wave { .. } => ImageFormat::Animated,
+        }
+    }
+}
+
+enum ImageFormat {
+    Static,
+    Animated,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -92,4 +164,14 @@ pub(crate) enum UlamSpiralMode {
     PrimeOnly,
     /// Generates circles based on how many divisors a number has
     Divisor,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub(crate) enum WaveType {
+    /// Generates a sine wave
+    Sine,
+    /// Generates a cosine wave
+    Cosine,
+    /// Generates a tangent wave
+    Tangent,
 }
