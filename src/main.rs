@@ -2,9 +2,13 @@ use std::{fs::File, io::BufWriter, time::Instant};
 
 use clap::{Parser, Subcommand, ValueEnum};
 use csscolorparser::Color;
+use image::RgbaImage;
 
 use crate::{
-    mandelbrot::{generate_mandelbrot_image, MandelbrotImageOptions}, sierpinski::generate_sierpinski_image, ulam_spiral::{generate_ulam_spiral_image, UlamSpiralOptions}, waves::{generate_wave_images, WaveOptions}
+    mandelbrot::{MandelbrotImageOptions, generate_mandelbrot_image},
+    sierpinski::{generate_sierpinski_image, generate_sierpinski_zoom_images},
+    ulam_spiral::{UlamSpiralOptions, generate_ulam_spiral_image},
+    waves::{WaveOptions, generate_wave_images},
 };
 
 mod mandelbrot;
@@ -48,7 +52,11 @@ fn save_static_image(args: Args) {
             gradient,
         )),
         ImageType::Wave { .. } => unreachable!(),
-        ImageType::Sierpinski { color, size } => generate_sierpinski_image(color, size),
+        ImageType::Sierpinski {
+            color,
+            size,
+            zoom: _,
+        } => generate_sierpinski_image(color, size),
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -65,34 +73,49 @@ fn save_animated_image(args: Args) {
         ImageType::UlamSpiral { .. } => unreachable!(),
         ImageType::Mandelbrot { .. } => unreachable!(),
         ImageType::Wave { color, wave_type } => {
-                        let width = 500;
-                        let height = 500;
-                        let wave_images =
-                            generate_wave_images(WaveOptions::new(color, wave_type, width, height));
-                        let file_name = if args.output.ends_with(".png") {
-                            args.output
-                        } else {
-                            format!("{}.png", args.output)
-                        };
-                        let file = File::create(file_name).unwrap();
-                        let writer = &mut BufWriter::new(file);
-        
-                        let mut png_encoder = png::Encoder::new(writer, width, height);
-                        png_encoder.set_color(png::ColorType::Rgba);
-                        png_encoder.set_depth(png::BitDepth::Eight);
-                        png_encoder
-                            .set_animated(wave_images.len() as u32, 0)
-                            .expect("Couldn't set animated");
-                        let mut writer = png_encoder.write_header().expect("Couldn't write header");
-                        for wave_image in wave_images.iter() {
-                            writer
-                                .write_image_data(&wave_image)
-                                .expect("Couldn't write image data");
-                        }
-                        writer.finish().expect("Couldn't finish writing");
-            }
-        ImageType::Sierpinski { .. } => unreachable!(),
+            let width = 500;
+            let height = 500;
+            let wave_images =
+                generate_wave_images(WaveOptions::new(color, wave_type, width, height));
+
+            save_animated_images_to_file(&args.output, &wave_images, width, height);
+        }
+        ImageType::Sierpinski {
+            color,
+            size,
+            zoom: _,
+        } => {
+            let sierpinski_images = generate_sierpinski_zoom_images(color, size);
+
+            save_animated_images_to_file(&args.output, &sierpinski_images, size, size);
+        }
     }
+}
+
+fn save_animated_images_to_file(file_path: &str, images: &[RgbaImage], width: u32, height: u32) {
+    let file_name = if file_path.ends_with(".png") {
+        file_path.to_string()
+    } else {
+        format!("{}.png", file_path)
+    };
+
+    let file = File::create(file_name).unwrap();
+    let writer = &mut BufWriter::new(file);
+
+    let mut png_encoder = png::Encoder::new(writer, width, height);
+    png_encoder.set_color(png::ColorType::Rgba);
+    png_encoder.set_depth(png::BitDepth::Eight);
+
+    png_encoder
+        .set_animated(images.len() as u32, 0)
+        .expect("Couldn't set animated");
+    let mut writer = png_encoder.write_header().expect("Couldn't write header");
+    for wave_image in images.iter() {
+        writer
+            .write_image_data(&wave_image)
+            .expect("Couldn't write image data");
+    }
+    writer.finish().expect("Couldn't finish writing");
 }
 
 /// Args for the program
@@ -115,30 +138,30 @@ enum ImageType {
         /// The size of the spiral to go up to, defaults to 201 squared
         #[arg(short, long, default_value = "40401")]
         size: u32,
-        
+
         #[arg(short, long, default_value = "black")]
         color: Color,
-        
+
         #[arg(short, long, default_value = "prime-only")]
         mode: UlamSpiralMode,
-        
+
         #[arg(short, long, default_value = "white")]
         background_color: Color,
     },
     Mandelbrot {
         #[arg(short, long, default_value = "black")]
         color: Color,
-        
+
         #[arg(short, long, default_value = "white")]
         background_color: Color,
-        
+
         #[arg(short, long, default_value = "false")]
         gradient: bool,
     },
     Wave {
         #[arg(short, long, default_value = "black")]
         color: Color,
-        
+
         #[arg(short, long, default_value = "sine")]
         wave_type: WaveType,
     },
@@ -148,7 +171,10 @@ enum ImageType {
 
         #[arg(short, long, default_value = "1000")]
         size: u32,
-    }
+
+        #[arg(short, long, default_value = "false")]
+        zoom: bool,
+    },
 }
 
 impl ImageType {
@@ -157,7 +183,10 @@ impl ImageType {
             ImageType::UlamSpiral { .. } => ImageFormat::Static,
             ImageType::Mandelbrot { .. } => ImageFormat::Static,
             ImageType::Wave { .. } => ImageFormat::Animated,
-            ImageType::Sierpinski { .. } => ImageFormat::Static,
+            ImageType::Sierpinski { zoom, .. } => match *zoom {
+                true => ImageFormat::Animated,
+                false => ImageFormat::Static,
+            },
         }
     }
 }
