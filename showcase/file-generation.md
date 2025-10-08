@@ -40,3 +40,12 @@ Generated with the following:
 
 Generated with the following:  
 `cargo run --release -- --output showcase/sierpinski-zoom sierpinski --color fuchsia --zoom`
+
+## perlin.webp
+
+Perlin noise image:
+
+![image showing perlin noise with orange/purple colours](./perlin.webp)
+
+Generated with the following:  
+`cargo run --release -- --output showcase/perlin.webp perlin --color1 orange --color2 purple`

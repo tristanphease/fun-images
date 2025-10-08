@@ -6,12 +6,14 @@ use image::RgbaImage;
 
 use crate::{
     mandelbrot::{MandelbrotImageOptions, generate_mandelbrot_image},
+    perlin::{PerlinNoiseOptions, generate_perlin_noise},
     sierpinski::{generate_sierpinski_image, generate_sierpinski_zoom_images},
     ulam_spiral::{UlamSpiralOptions, generate_ulam_spiral_image},
     waves::{WaveOptions, generate_wave_images},
 };
 
 mod mandelbrot;
+mod perlin;
 mod sierpinski;
 mod ulam_spiral;
 mod waves;
@@ -57,6 +59,11 @@ fn save_static_image(args: Args) {
             size,
             zoom: _,
         } => generate_sierpinski_image(color, size),
+        ImageType::Perlin {
+            color1,
+            color2,
+            size,
+        } => generate_perlin_noise(PerlinNoiseOptions::new(size, color1, color2)),
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -89,6 +96,7 @@ fn save_animated_image(args: Args) {
 
             save_animated_images_to_file(&args.output, &sierpinski_images, size, size);
         }
+        ImageType::Perlin { .. } => unreachable!(),
     }
 }
 
@@ -175,6 +183,16 @@ enum ImageType {
         #[arg(short, long, default_value = "false")]
         zoom: bool,
     },
+    Perlin {
+        #[arg(long, default_value = "black")]
+        color1: Color,
+
+        #[arg(long, default_value = "white")]
+        color2: Color,
+
+        #[arg(short, long, default_value = "500")]
+        size: u32,
+    },
 }
 
 impl ImageType {
@@ -187,6 +205,7 @@ impl ImageType {
                 true => ImageFormat::Animated,
                 false => ImageFormat::Static,
             },
+            ImageType::Perlin { .. } => ImageFormat::Static,
         }
     }
 }
