@@ -57,7 +57,7 @@ pub fn generate_perlin_noise(options: PerlinNoiseOptions) -> DynamicImage {
             } else {
                 grid_y + 1
             };
-            
+
             let vec_1 = grid[grid_top_y * grid_size + grid_left_x];
             let vec_2 = grid[grid_top_y * grid_size + grid_right_x];
             let vec_3 = grid[grid_bottom_y * grid_size + grid_left_x];
@@ -88,14 +88,14 @@ pub fn generate_perlin_noise(options: PerlinNoiseOptions) -> DynamicImage {
             let dot_2 = dot(vec_2, offset_2);
             let dot_3 = dot(vec_3, offset_3);
             let dot_4 = dot(vec_4, offset_4);
-            
+
             let frac_x = fade((x % GRID_SIZE as u32) as f64 / GRID_SIZE as f64);
             let frac_y = fade((y % GRID_SIZE as u32) as f64 / GRID_SIZE as f64);
-            
+
             let val1 = interpolate(dot_1, dot_2, frac_x);
             let val2 = interpolate(dot_3, dot_4, frac_x);
             let value = interpolate(val1, val2, frac_y);
-            
+
             let value = (value as f32 + 1.0) / 2.0;
             let color = Color {
                 r: color1.r * value + color2.r * (1.0 - value),

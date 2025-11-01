@@ -5,6 +5,7 @@ use csscolorparser::Color;
 use image::RgbaImage;
 
 use crate::{
+    farey::generate_farey_sunburst,
     mandelbrot::{MandelbrotImageOptions, generate_mandelbrot_image},
     perlin::{PerlinNoiseOptions, generate_perlin_noise},
     sierpinski::{generate_sierpinski_image, generate_sierpinski_zoom_images},
@@ -12,6 +13,7 @@ use crate::{
     waves::{WaveOptions, generate_wave_images},
 };
 
+mod farey;
 mod mandelbrot;
 mod perlin;
 mod sierpinski;
@@ -64,6 +66,7 @@ fn save_static_image(args: Args) {
             color2,
             size,
         } => generate_perlin_noise(PerlinNoiseOptions::new(size, color1, color2)),
+        ImageType::Farey { color, n } => generate_farey_sunburst(color, n),
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -97,6 +100,7 @@ fn save_animated_image(args: Args) {
             save_animated_images_to_file(&args.output, &sierpinski_images, size, size);
         }
         ImageType::Perlin { .. } => unreachable!(),
+        ImageType::Farey { .. } => unreachable!(),
     }
 }
 
@@ -193,6 +197,13 @@ enum ImageType {
         #[arg(short, long, default_value = "500")]
         size: u32,
     },
+    Farey {
+        #[arg(short, long, default_value = "black")]
+        color: Color,
+
+        #[arg(long, default_value = "6")]
+        n: i32,
+    },
 }
 
 impl ImageType {
@@ -206,6 +217,7 @@ impl ImageType {
                 false => ImageFormat::Static,
             },
             ImageType::Perlin { .. } => ImageFormat::Static,
+            ImageType::Farey { .. } => ImageFormat::Static,
         }
     }
 }
