@@ -19,7 +19,7 @@ const SIZE: u32 = 1024;
 const LINE_THICKNESS: i32 = 6;
 const CIRCLE_SIZE: i32 = 20;
 
-pub fn generate_farey_sunburst(color: Color, n: i32) -> DynamicImage {
+pub fn generate_farey_sunburst(color: Color, n: i32, fill_color: Option<Color>) -> DynamicImage {
     let mut image = RgbaImage::new(SIZE, SIZE);
 
     let scale = SIZE as i32 / n / 2 - 20;
@@ -32,16 +32,56 @@ pub fn generate_farey_sunburst(color: Color, n: i32) -> DynamicImage {
     let bottom_left_position = |x, y| (centre.0 - x * scale, centre.1 + y * scale);
     let top_left_position = |x, y| (centre.0 - x * scale, centre.1 - y * scale);
 
+    if let Some(fill_color) = fill_color {
+        let mut all_points = Vec::new();
+
+        get_points_octet(top_right_position, false, n, &mut all_points);
+        get_points_octet(top_right_position, true, n, &mut all_points);
+        get_points_octet(bottom_right_position, false, n, &mut all_points);
+        get_points_octet(bottom_right_position, true, n, &mut all_points);
+        get_points_octet(bottom_left_position, false, n, &mut all_points);
+        get_points_octet(bottom_left_position, true, n, &mut all_points);
+        get_points_octet(top_left_position, false, n, &mut all_points);
+        get_points_octet(top_left_position, true, n, &mut all_points);
+
+        let fill_color = Rgba(fill_color.to_rgba8());
+        let points: Vec<_> = all_points.iter().map(|x| Point::new(x.0, x.1)).collect();
+        draw_polygon_mut(&mut image, &points, fill_color);
+    }
+
     draw_farey_octet(&mut image, top_right_position, false, n, color);
     draw_farey_octet(&mut image, top_right_position, true, n, color);
-    draw_farey_octet(&mut image, bottom_right_position, true, n, color);
     draw_farey_octet(&mut image, bottom_right_position, false, n, color);
+    draw_farey_octet(&mut image, bottom_right_position, true, n, color);
     draw_farey_octet(&mut image, bottom_left_position, false, n, color);
     draw_farey_octet(&mut image, bottom_left_position, true, n, color);
     draw_farey_octet(&mut image, top_left_position, false, n, color);
     draw_farey_octet(&mut image, top_left_position, true, n, color);
 
     DynamicImage::ImageRgba8(image)
+}
+
+fn get_points_octet<F>(position_func: F, swap: bool, n: i32, point_vec: &mut Vec<(i32, i32)>)
+where
+    F: Fn(i32, i32) -> (i32, i32),
+{
+    let farey_iterator = if swap {
+        FareyIterator::new_descending(n)
+    } else {
+        FareyIterator::new(n)
+    };
+    for (mut x, mut y) in farey_iterator {
+        if swap {
+            std::mem::swap(&mut x, &mut y);
+        }
+        let position = position_func(x, y);
+        if let Some(last_point) = point_vec.last()
+            && *last_point == position
+        {
+        } else {
+            point_vec.push(position);
+        }
+    }
 }
 
 fn draw_farey_octet<F, C>(image: &mut C, position_func: F, swap: bool, n: i32, color: C::Pixel)
@@ -75,14 +115,14 @@ where
     }
 }
 
-fn draw_thick_line<C, P>(
+fn draw_thick_line<C>(
     canvas: &mut C,
-    color: P,
+    color: C::Pixel,
     point1: Point<i32>,
     point2: Point<i32>,
     thickness: i32,
 ) where
-    C: Canvas<Pixel = P>,
+    C: Canvas,
 {
     let angle = f64::atan2(
         point2.y as f64 - point1.y as f64,

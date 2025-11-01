@@ -57,4 +57,4 @@ A farey sunburst as per the [wikipedia page](https://en.wikipedia.org/wiki/Farey
 ![image showing a sunburst image](./farey.webp)
 
 Generated with the following:
-`cargo run -- --output=showcase/farey.webp farey --n=6 --color=black`
+`cargo run -- --output=showcase/farey.webp farey --n=6 --color=#66aa00 --fill-color=#aaff00`

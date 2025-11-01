@@ -66,7 +66,11 @@ fn save_static_image(args: Args) {
             color2,
             size,
         } => generate_perlin_noise(PerlinNoiseOptions::new(size, color1, color2)),
-        ImageType::Farey { color, n } => generate_farey_sunburst(color, n),
+        ImageType::Farey {
+            color,
+            n,
+            fill_color,
+        } => generate_farey_sunburst(color, n, fill_color),
     };
     let end = Instant::now();
     println!("Generated image in {}ms", (end - start).as_millis());
@@ -203,6 +207,9 @@ enum ImageType {
 
         #[arg(long, default_value = "6")]
         n: i32,
+
+        #[arg(short, long)]
+        fill_color: Option<Color>,
     },
 }
 
